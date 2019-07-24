@@ -1,0 +1,368 @@
+classdef communication_system < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        BPSK_wireless_and_wireline_System_Inplementation  matlab.ui.Figure
+        TotalrandomdatabitsEditFieldLabel  matlab.ui.control.Label
+        N0                           matlab.ui.control.NumericEditField
+        NRZAmplitudeEditFieldLabel   matlab.ui.control.Label
+        A0                           matlab.ui.control.NumericEditField
+        BERvsEbN0plotButton          matlab.ui.control.Button
+        UIAxes                       matlab.ui.control.UIAxes
+        UIAxes_2                     matlab.ui.control.UIAxes
+        UIAxes_3                     matlab.ui.control.UIAxes
+        UIAxes_4                     matlab.ui.control.UIAxes
+        UIAxes_5                     matlab.ui.control.UIAxes
+        UIAxes_6                     matlab.ui.control.UIAxes
+        PowerSwitchLabel             matlab.ui.control.Label
+        PowerSwitch                  matlab.ui.control.ToggleSwitch
+        BERCalculatedEditFieldLabel  matlab.ui.control.Label
+        BERCal                       matlab.ui.control.NumericEditField
+    end
+
+    methods (Access = private)
+
+        % Button pushed function: BERvsEbN0plotButton
+        function BERvsEbN0plotButtonPushed(app, event)
+        
+          BERgraph;
+          
+        end
+
+        % Value changed function: PowerSwitch
+        function PowerSwitchValueChanged(app, event)
+            value = app.PowerSwitch.Value;
+            if (strcmp(value , 'On'))
+             
+                N=app.N0.Value;
+                data=randn(1,N)>=0;
+                Rb=1e3;
+                amplitude = app.A0.Value;
+                noiseVariance = 0.5;
+                
+                [time,NRZdata,Fs]= NRZencoder (data,Rb,amplitude);
+                 Tb=1/Rb;
+                 %%plot for Input Binary data
+                %% subplot(4,2,1);
+                 stem(app.UIAxes,data);
+                xlabel(app.UIAxes,'Samples');
+                ylabel(app.UIAxes,'Amplitude');
+                title(app.UIAxes,'Input Binary data');
+                axis([0,N,-0.5,1.5]);
+                
+                %%Polar NRZ encoded data
+               %% subplot(4,2,3);
+                plotHandle = plot(app.UIAxes_3,time, NRZdata);
+                xlabel(app.UIAxes_3,'time');
+                ylabel(app.UIAxes_3,'Amplitude');
+                title(app.UIAxes_3,'Polar NRZ encoded data');
+                plotHandle(1).LineWidth = 2.5;
+                maxTime = max(time); 
+                maxAmp = max(NRZdata);
+                minAmp = min(NRZdata);
+                axis([0,maxTime , minAmp-1,maxAmp+1 ]);
+                
+                
+                
+                %%BPSK modulation 
+                Fc=2*Rb;
+                osc = sin(2*pi*Fc*time);
+                BPSKmodulation = NRZdata.*osc;
+              %%  subplot(4,2,5);
+                plot(app.UIAxes_4,time,BPSKmodulation);
+                xlabel(app.UIAxes_4,'Time');
+                ylabel(app.UIAxes_4,'Amplitude');
+                title(app.UIAxes_4,'BPSK modulated data');                                                          
+                
+                maxTime = max(time);
+                maxAmp = max(NRZdata);
+                minAmp = min(NRZdata);
+                axis([0, maxTime , minAmp-1, maxAmp+1]);
+                %%Adding Channel noise 
+                
+                noise = sqrt(noiseVariance)*randn(1,length(BPSKmodulation));
+                received = BPSKmodulation + noise;
+                %%subplot(4,2,2);
+                plot(app.UIAxes_2,time,received );
+                xlabel(app.UIAxes_2,'Time');
+                ylabel(app.UIAxes_2,'Amplitude');
+                title(app.UIAxes_2,'BPSK Modulated data with AWNG noise ');
+                
+                %%%BPSK Receiver
+                
+                v=received.*osc;
+                %%%integration
+                integrationBase = 0:1/Fs:Tb-1/Fs;
+                for i=0:(length(v)/(Tb*Fs))-1
+                    y(i+1) = trapz(integrationBase,v(int32(i*Tb*Fs+1):int32((i+1)*Tb*Fs)));
+                end
+               
+                
+                %%%Threshold comparision
+                estimatedBit=(real(y)>=0);
+            %%%    subplot(4,2,4);
+                stem(app.UIAxes_5,estimatedBit);
+                xlabel(app.UIAxes_5,'Samples');
+                ylabel(app.UIAxes_5,'Amplitude');
+                title(app.UIAxes_5,'Estimated Binary Data');
+                axis([0,N,-0.5,1.5]);
+                
+                %%%BER Calculation
+                app.BERCal.Value = sum(xor(data,estimatedBit))/length(data);
+                
+              
+                
+                %%%Constellation map at Receiver 
+               %%% subplot(4,2,6);
+                %%%Q=zeros(1,length(y));
+                Q = imag(y); %% Complex part on y axes 
+                stem(app.UIAxes_6,y/max(y),Q);
+                xlabel(app.UIAxes_6,'Inplase Component');
+                ylabel(app.UIAxes_6,'Quadrature Component');
+                title(app.UIAxes_6,['BPSK Constellation at receiver when AWNG noise =',num2str(noiseVariance)]);
+                axis([-1.5,1.5,-1,1]);
+                
+                %%%%%Calculation for BER Vs EbN0 Plot  
+                x = 1;
+                
+                TRIAL = N; %number of simulation runs per EbN0 %50000
+                for EbN0 = 0:1:20 %dB
+                 linear_EbN0 = 10^(EbN0/10);
+                 nvar = 1/(linear_EbN0); %calculation of N0, remember Eb = 1
+                 error = 0; %set error counter to 0
+                 for trial = 1:TRIAL % monte carlo trials.. count the errors
+                 n1 = sqrt(nvar/2)*randn; %noise for the first
+                 n2 = sqrt(nvar/2)*randn; %noise for the first
+                 h1 = sqrt(0.5)*abs(randn + 1i*randn); %rayleigh amplitude 1
+                 h2 = sqrt(0.5)*abs(randn + 1i*randn); %rayleigh amplitude 1
+                
+                
+                 %Selection combining
+                 P1 = chi2rnd(4);
+                 P2 = chi2rnd(4);
+                 as1 = P1*(abs(h1))^2;
+                 as2 = P2*(abs(h2))^2;
+                 if as1 >= as2
+                 y_selection = x*(as1*h1)+as1*n1;
+                 end
+                 if as1 < as2
+                 y_selection = x*(as2*h2)+as2*n2;
+                 end
+                
+                
+                 if y_selection < 0
+                 error = error + 1;
+                 end
+                 end
+                
+                 BER(EbN0+1) = error/(TRIAL);
+                end
+                setappdata(0, 'BER', BER);
+                % plot simulations
+                EbNo=0:1:20; %changed from 10
+                mu = 10.^(EbNo./10);
+                %%ber_theory = (1/2)*(1 - sqrt(mu ./ (mu + 1)));
+                BER2An = (3/16)*(mu./(mu.*mu.*mu));
+                setappdata(0, 'BER2An', BER2An);
+               
+                
+                data = rand(1,N)>0.5;
+                x=2*data-1;
+                EbN0dB = 0:1:20;
+                setappdata(0, 'EbN0dB', EbN0dB);
+
+                
+                simBER_rayleigh = zeros(1,length(EbN0dB));
+                simBER_awgn = zeros(1,length(EbN0dB));
+                
+                
+                for i=1:length(EbN0dB)
+                    
+                    noise = (1/sqrt(2))*(randn(1,N)+1i*randn(1,N));
+                    h=(1/sqrt(2))*(randn(1,N)+1i*randn(1,N));
+                    n=noise*10^(-EbN0dB(i)/20);
+                    
+                    y_awgn = x+n;
+                    y_rayleigh = h.*x+n;
+                    
+                    %%Coherent receiver for rayleigh channel
+                    
+                    y_rayleigh_cap = y_rayleigh./h;
+                    r_rayleigh = real(y_rayleigh_cap)>0;
+                    
+                    %%Receiver for AWGN
+                    r_awgn = real(y_awgn)>0;
+                    
+                    simBER_awgn(i)= sum(xor(data,r_awgn));
+                    simBER_rayleigh(i)= sum(xor(data,r_rayleigh));
+                      
+                    
+                    
+                end
+                
+                
+                simBER_rayleigh = simBER_rayleigh/N;
+                setappdata(0, 'simBER_rayleigh', simBER_rayleigh);
+                simBER_awgn = simBER_awgn/N;
+                setappdata(0, 'simBER_awgn', simBER_awgn);
+                
+                
+                %%%%%Theoritical BER
+                EbN0 = 10.^(EbN0dB/10);
+                
+                theoritical_rayleigh = 0.5*(1-sqrt(EbN0./(1+EbN0)));
+                setappdata(0, 'theoritical_rayleigh',theoritical_rayleigh);
+                theoritical_awgn = 0.5*erfc(sqrt(EbN0));
+                setappdata(0, 'theoritical_awgn', theoritical_awgn);
+                                
+                %%%%%%%%%%
+            end 
+            
+            if (strcmp(value , 'Off'))
+                
+                cla(app.UIAxes,'reset');
+                cla(app.UIAxes_2,'reset');
+                cla(app.UIAxes_3,'reset');
+                cla(app.UIAxes_4,'reset');
+                cla(app.UIAxes_5,'reset');
+                cla(app.UIAxes_6,'reset');
+                app.BERCal.Value = 0;
+            end
+            
+        end
+    end
+
+    % App initialization and construction
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create BPSK_wireless_and_wireline_System_Inplementation
+            app.BPSK_wireless_and_wireline_System_Inplementation = uifigure;
+            app.BPSK_wireless_and_wireline_System_Inplementation.Position = [100 100 655 480];
+            app.BPSK_wireless_and_wireline_System_Inplementation.Name = 'UI Figure';
+
+            % Create TotalrandomdatabitsEditFieldLabel
+            app.TotalrandomdatabitsEditFieldLabel = uilabel(app.BPSK_wireless_and_wireline_System_Inplementation);
+            app.TotalrandomdatabitsEditFieldLabel.HorizontalAlignment = 'right';
+            app.TotalrandomdatabitsEditFieldLabel.Position = [375 70 123 22];
+            app.TotalrandomdatabitsEditFieldLabel.Text = 'Total random data bits';
+
+            % Create N0
+            app.N0 = uieditfield(app.BPSK_wireless_and_wireline_System_Inplementation, 'numeric');
+            app.N0.Limits = [1 Inf];
+            app.N0.Position = [513 70 92 22];
+            app.N0.Value = 1;
+
+            % Create NRZAmplitudeEditFieldLabel
+            app.NRZAmplitudeEditFieldLabel = uilabel(app.BPSK_wireless_and_wireline_System_Inplementation);
+            app.NRZAmplitudeEditFieldLabel.HorizontalAlignment = 'right';
+            app.NRZAmplitudeEditFieldLabel.Position = [418 38 90 22];
+            app.NRZAmplitudeEditFieldLabel.Text = 'NRZ Amplitude ';
+
+            % Create A0
+            app.A0 = uieditfield(app.BPSK_wireless_and_wireline_System_Inplementation, 'numeric');
+            app.A0.Limits = [1 6];
+            app.A0.Position = [515 38 45 22];
+            app.A0.Value = 2;
+
+            % Create BERvsEbN0plotButton
+            app.BERvsEbN0plotButton = uibutton(app.BPSK_wireless_and_wireline_System_Inplementation, 'push');
+            app.BERvsEbN0plotButton.ButtonPushedFcn = createCallbackFcn(app, @BERvsEbN0plotButtonPushed, true);
+            app.BERvsEbN0plotButton.BackgroundColor = [0.5529 0.9882 0.9882];
+            app.BERvsEbN0plotButton.Position = [161 22 123 22];
+            app.BERvsEbN0plotButton.Text = 'BER v/s EbN0 (plot)';
+
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.BPSK_wireless_and_wireline_System_Inplementation);
+            title(app.UIAxes, 'Title')
+            xlabel(app.UIAxes, 'X')
+            ylabel(app.UIAxes, 'Y')
+            app.UIAxes.Position = [3 372 331 109];
+
+            % Create UIAxes_2
+            app.UIAxes_2 = uiaxes(app.BPSK_wireless_and_wireline_System_Inplementation);
+            title(app.UIAxes_2, 'Title')
+            xlabel(app.UIAxes_2, 'X')
+            ylabel(app.UIAxes_2, 'Y')
+            app.UIAxes_2.Position = [333 372 323 109];
+
+            % Create UIAxes_3
+            app.UIAxes_3 = uiaxes(app.BPSK_wireless_and_wireline_System_Inplementation);
+            title(app.UIAxes_3, 'Title')
+            xlabel(app.UIAxes_3, 'X')
+            ylabel(app.UIAxes_3, 'Y')
+            app.UIAxes_3.Position = [4 253 331 120];
+
+            % Create UIAxes_4
+            app.UIAxes_4 = uiaxes(app.BPSK_wireless_and_wireline_System_Inplementation);
+            title(app.UIAxes_4, 'Title')
+            xlabel(app.UIAxes_4, 'X')
+            ylabel(app.UIAxes_4, 'Y')
+            app.UIAxes_4.Position = [1 121 331 133];
+
+            % Create UIAxes_5
+            app.UIAxes_5 = uiaxes(app.BPSK_wireless_and_wireline_System_Inplementation);
+            title(app.UIAxes_5, 'Title')
+            xlabel(app.UIAxes_5, 'X')
+            ylabel(app.UIAxes_5, 'Y')
+            app.UIAxes_5.Position = [325 253 331 120];
+
+            % Create UIAxes_6
+            app.UIAxes_6 = uiaxes(app.BPSK_wireless_and_wireline_System_Inplementation);
+            title(app.UIAxes_6, 'Title')
+            xlabel(app.UIAxes_6, 'X')
+            ylabel(app.UIAxes_6, 'Y')
+            app.UIAxes_6.YTick = [-1 0 1];
+            app.UIAxes_6.Position = [324 122 332 132];
+
+            % Create PowerSwitchLabel
+            app.PowerSwitchLabel = uilabel(app.BPSK_wireless_and_wireline_System_Inplementation);
+            app.PowerSwitchLabel.HorizontalAlignment = 'center';
+            app.PowerSwitchLabel.Position = [28 -2 39 22];
+            app.PowerSwitchLabel.Text = 'Power';
+
+            % Create PowerSwitch
+            app.PowerSwitch = uiswitch(app.BPSK_wireless_and_wireline_System_Inplementation, 'toggle');
+            app.PowerSwitch.ValueChangedFcn = createCallbackFcn(app, @PowerSwitchValueChanged, true);
+            app.PowerSwitch.Position = [38 36 18 42];
+
+            % Create BERCalculatedEditFieldLabel
+            app.BERCalculatedEditFieldLabel = uilabel(app.BPSK_wireless_and_wireline_System_Inplementation);
+            app.BERCalculatedEditFieldLabel.BackgroundColor = [0.8 0.8 0.8];
+            app.BERCalculatedEditFieldLabel.HorizontalAlignment = 'right';
+            app.BERCalculatedEditFieldLabel.Position = [125 59 94 22];
+            app.BERCalculatedEditFieldLabel.Text = 'BER Calculated ';
+
+            % Create BERCal
+            app.BERCal = uieditfield(app.BPSK_wireless_and_wireline_System_Inplementation, 'numeric');
+            app.BERCal.BackgroundColor = [0.8 0.8 0.8];
+            app.BERCal.Position = [234 59 100 22];
+        end
+    end
+
+    methods (Access = public)
+
+        % Construct app
+        function app = communication_system
+
+            % Create and configure components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.BPSK_wireless_and_wireline_System_Inplementation)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.BPSK_wireless_and_wireline_System_Inplementation)
+        end
+    end
+end
