@@ -1,0 +1,262 @@
+classdef BERgraph < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        BER_Vs_SNR_plot               matlab.ui.Figure
+        RayleighFadingSwitchLabel     matlab.ui.control.Label
+        RayleighFadingSwitch          matlab.ui.control.Switch
+        NoofReceivingAnteenaLabel     matlab.ui.control.Label
+        NoofReceivingAnteenaDropDown  matlab.ui.control.DropDown
+        PowerSwitchLabel              matlab.ui.control.Label
+        PowerSwitch                   matlab.ui.control.ToggleSwitch
+        UIAxes                        matlab.ui.control.UIAxes
+    end
+
+    
+    properties (Access = public)
+    end
+    
+
+    methods (Access = private)
+
+        % Value changed function: RayleighFadingSwitch
+        function RayleighFadingSwitchValueChanged(app, event)
+            value = app.RayleighFadingSwitch.Value;
+            setappdata(0, 'value', value);
+            value1=getappdata(0, 'value1');
+            
+             EbN0dB=getappdata(0, 'EbN0dB');
+             theoritical_awgn=getappdata(0, 'theoritical_awgn');
+             simBER_awgn=getappdata(0, 'simBER_awgn');
+             theoritical_rayleigh=getappdata(0, 'theoritical_rayleigh');
+             simBER_rayleigh=getappdata(0, 'simBER_rayleigh');
+             BER2An=getappdata(0, 'BER2An');
+             BER=getappdata(0, 'BER');
+             
+            if (strcmp(value , 'Off')&&strcmp(value1 , 'On'))
+                semilogy(app.UIAxes,EbN0dB,theoritical_awgn,'b--',EbN0dB,simBER_awgn,'r*-');
+                %semilogy(app.UIAxes,EbN0dB,simBER_awgn,'r*-','LineWidth',2); grid on;
+%                axis([0 20 10^-5 1.2]);
+                legend(app.UIAxes,'Theoritical AWGN','Simulated AWGN'  );
+                title(app.UIAxes,'Eb/N0 vs BER for BPSK over AWGN channles');
+                xlabel(app.UIAxes,'Eb/N0(dB)');
+                ylabel(app.UIAxes,'Bit error rate');
+            end
+            
+            if (strcmp(value , 'On')&&strcmp(value1 , 'On'))
+   
+                switch   app.NoofReceivingAnteenaDropDown.Value
+                    case 'Single'
+                        semilogy(app.UIAxes,EbN0dB,theoritical_awgn,'r--o',EbN0dB,theoritical_rayleigh,'b--o',EbN0dB,simBER_rayleigh,'g*-');
+%                        
+%                         semilogy(app.UIAxes,EbN0dB,theoritical_rayleigh,'ko','LineWidth',2);hold on;
+%                         semilogy(app.UIAxes,EbN0dB,simBER_rayleigh,'g*-','LineWidth',2);grid on;
+%                        axis([0 20 10^-5 1.2]);
+                        legend(app.UIAxes,'Theoritical AWGN','Theoritical rayleigh','Simulated Rayleigh');
+                        title(app.UIAxes,'Eb/N0 vs BER for BPSK over Rayleigh channles');
+                        xlabel(app.UIAxes,'Eb/N0(dB)');
+                        ylabel(app.UIAxes,'Bit error rate')
+                    case 'Dual'
+                        semilogy(app.UIAxes,EbN0dB,theoritical_rayleigh,EbN0dB,BER2An,'b--o',EbN0dB,BER,'r*-'); % plot EG BER vs EbNo
+%                         semilogy(app.UIAxes,EbN0dB,BER2An,'b--o'); hold on ;% plot EG BER vs EbNo
+%                         semilogy(app.UIAxes,EbN0dB,BER,'r*-'); grid on  ; % plot EG BER vs EbNo
+%                        axis([0 20 10^-5 1.2]);
+                        legend(app.UIAxes,'Theoritical 1R-antenna','Theoritical 2R-Antenna ','Simulated 2R-Antenna');
+                        title(app.UIAxes,'Eb/N0 vs BER for BPSK over Rayleigh channles With 2 Receiving Antennas');
+                        xlabel(app.UIAxes,'Eb/N0(dB)');
+                        ylabel(app.UIAxes,'Bit error rate')
+                end          
+              
+        
+            end
+            
+            
+        end
+
+        % Value changed function: PowerSwitch
+        function PowerSwitchValueChanged(app, event)
+            value1 = app.PowerSwitch.Value;
+            setappdata(0, 'value1', value1);
+            if (strcmp(value1 , 'On'))
+                %%%%%%%%%%%
+            value = app.RayleighFadingSwitch.Value;
+            
+             EbN0dB=getappdata(0, 'EbN0dB');
+             theoritical_awgn=getappdata(0, 'theoritical_awgn');
+             simBER_awgn=getappdata(0, 'simBER_awgn');
+             theoritical_rayleigh=getappdata(0, 'theoritical_rayleigh');
+             simBER_rayleigh=getappdata(0, 'simBER_rayleigh');
+             BER2An=getappdata(0, 'BER2An');
+             BER=getappdata(0, 'BER');
+             
+            if (strcmp(value , 'Off'))
+              %  semilogy(app.UIAxes,EbN0dB,theoritical_awgn,'bo','LineWidth',2);hold on;
+              %  semilogy(app.UIAxes,EbN0dB,simBER_awgn,'r*-','LineWidth',2); grid on;
+                semilogy(app.UIAxes,EbN0dB,theoritical_awgn,'b--o',EbN0dB,simBER_awgn,'r*-');
+       %         axis([0 20 10^-5 1.2]);
+                legend(app.UIAxes,'Theoritical AWGN','Simulated AWGN'  );
+                title(app.UIAxes,'Eb/N0 vs BER for BPSK over AWGN channles');
+                xlabel(app.UIAxes,'Eb/N0(dB)');
+                ylabel(app.UIAxes,'Bit error rate');
+            end
+            if (strcmp(value , 'On'))
+   
+                switch   app.NoofReceivingAnteenaDropDown.Value
+                    case 'Single'
+                        semilogy(app.UIAxes,EbN0dB,theoritical_awgn,'r--o',EbN0dB,theoritical_rayleigh,'b--o',EbN0dB,simBER_rayleigh,'g*-');
+%                        
+%                         semilogy(app.UIAxes,EbN0dB,theoritical_rayleigh,'ko','LineWidth',2);hold on;
+%                         semilogy(app.UIAxes,EbN0dB,simBER_rayleigh,'g*-','LineWidth',2);grid on;
+%                        axis([0 20 10^-5 1.2]);
+                        legend(app.UIAxes,'Theoritical AWGN','Theoritical rayleigh','Simulated Rayleigh');
+                        title(app.UIAxes,'Eb/N0 vs BER for BPSK over Rayleigh channles');
+                        xlabel(app.UIAxes,'Eb/N0(dB)');
+                        ylabel(app.UIAxes,'Bit error rate')
+                    case 'Dual'
+                        semilogy(app.UIAxes,EbN0dB,theoritical_rayleigh,EbN0dB,BER2An,'b--o',EbN0dB,BER,'r*-'); % plot EG BER vs EbNo
+%                         semilogy(app.UIAxes,EbN0dB,BER2An,'b--o'); hold on ;% plot EG BER vs EbNo
+%                         semilogy(app.UIAxes,EbN0dB,BER,'r*-'); grid on  ; % plot EG BER vs EbNo
+%                        axis([0 20 10^-5 1.2]);
+                        legend(app.UIAxes,'Theoritical 1R-antenna','Theoritical 2R-Antenna ','Simulated 2R-Antenna');
+                        title(app.UIAxes,'Eb/N0 vs BER for BPSK over Rayleigh channles With 2 Receiving Antennas');
+                        xlabel(app.UIAxes,'Eb/N0(dB)');
+                        ylabel(app.UIAxes,'Bit error rate')
+                end          
+              
+        
+            end
+            
+            
+                %%%%%%%%%%%%%%
+            end
+            
+             if (strcmp(value1 , 'Off'))
+                %%%%%%%%%%%
+                 cla(app.UIAxes,'reset');
+
+                %%%%%%%%%%%%%%
+            end
+            
+        end
+
+        % Value changed function: NoofReceivingAnteenaDropDown
+        function NoofReceivingAnteenaDropDownValueChanged(app, event)
+   %%         value = app.NoofReceivingAnteenaDropDown.Value;
+             value1=getappdata(0, 'value1');
+             value=getappdata(0, 'value');
+             EbN0dB=getappdata(0, 'EbN0dB');
+             theoritical_awgn=getappdata(0, 'theoritical_awgn');
+              %simBER_awgn=getappdata(0, 'simBER_awgn');
+             theoritical_rayleigh=getappdata(0, 'theoritical_rayleigh');
+             simBER_rayleigh=getappdata(0, 'simBER_rayleigh');
+             BER2An=getappdata(0, 'BER2An');
+             BER=getappdata(0, 'BER');
+   
+             if (strcmp(value , 'On')&&strcmp(value1 , 'On'))
+                switch   app.NoofReceivingAnteenaDropDown.Value
+                    case 'Single'
+                        semilogy(app.UIAxes,EbN0dB,theoritical_awgn,'r--o',EbN0dB,theoritical_rayleigh,'b--o',EbN0dB,simBER_rayleigh,'g*-');
+%                        
+%                         semilogy(app.UIAxes,EbN0dB,theoritical_rayleigh,'ko','LineWidth',2);hold on;
+%                         semilogy(app.UIAxes,EbN0dB,simBER_rayleigh,'g*-','LineWidth',2);grid on;
+%                        axis([0 20 10^-5 1.2]);
+                        legend(app.UIAxes,'Theoritical AWGN','Theoritical rayleigh','Simulated Rayleigh');
+                        title(app.UIAxes,'Eb/N0 vs BER for BPSK over Rayleigh channles');
+                        xlabel(app.UIAxes,'Eb/N0(dB)');
+                        ylabel(app.UIAxes,'Bit error rate')
+                    case 'Dual'
+                        semilogy(app.UIAxes,EbN0dB,theoritical_rayleigh,EbN0dB,BER2An,'b--o',EbN0dB,BER,'r*-'); % plot EG BER vs EbNo
+%                         semilogy(app.UIAxes,EbN0dB,BER2An,'b--o'); hold on ;% plot EG BER vs EbNo
+%                         semilogy(app.UIAxes,EbN0dB,BER,'r*-'); grid on  ; % plot EG BER vs EbNo
+%                        axis([0 20 10^-5 1.2]);
+                        legend(app.UIAxes,'Theoritical 1R-antenna','Theoritical 2R-Antenna ','Simulated 2R-Antenna');
+                        title(app.UIAxes,'Eb/N0 vs BER for BPSK over Rayleigh channles With 2 Receiving Antennas');
+                        xlabel(app.UIAxes,'Eb/N0(dB)');
+                        ylabel(app.UIAxes,'Bit error rate')
+                end          
+             end
+             
+            
+        end
+    end
+
+    % App initialization and construction
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create BER_Vs_SNR_plot
+            app.BER_Vs_SNR_plot = uifigure;
+            app.BER_Vs_SNR_plot.Position = [100 100 640 480];
+            app.BER_Vs_SNR_plot.Name = 'UI Figure';
+
+            % Create RayleighFadingSwitchLabel
+            app.RayleighFadingSwitchLabel = uilabel(app.BER_Vs_SNR_plot);
+            app.RayleighFadingSwitchLabel.HorizontalAlignment = 'center';
+            app.RayleighFadingSwitchLabel.Position = [198 3 92 22];
+            app.RayleighFadingSwitchLabel.Text = 'Rayleigh Fading';
+
+            % Create RayleighFadingSwitch
+            app.RayleighFadingSwitch = uiswitch(app.BER_Vs_SNR_plot, 'slider');
+            app.RayleighFadingSwitch.ValueChangedFcn = createCallbackFcn(app, @RayleighFadingSwitchValueChanged, true);
+            app.RayleighFadingSwitch.Position = [221 40 45 20];
+
+            % Create NoofReceivingAnteenaLabel
+            app.NoofReceivingAnteenaLabel = uilabel(app.BER_Vs_SNR_plot);
+            app.NoofReceivingAnteenaLabel.HorizontalAlignment = 'right';
+            app.NoofReceivingAnteenaLabel.Position = [365 17 213 22];
+            app.NoofReceivingAnteenaLabel.Text = '                   No. of Receiving Anteena ';
+
+            % Create NoofReceivingAnteenaDropDown
+            app.NoofReceivingAnteenaDropDown = uidropdown(app.BER_Vs_SNR_plot);
+            app.NoofReceivingAnteenaDropDown.Items = {'Single', 'Dual'};
+            app.NoofReceivingAnteenaDropDown.ValueChangedFcn = createCallbackFcn(app, @NoofReceivingAnteenaDropDownValueChanged, true);
+            app.NoofReceivingAnteenaDropDown.Position = [420 38 158 22];
+            app.NoofReceivingAnteenaDropDown.Value = 'Single';
+
+            % Create PowerSwitchLabel
+            app.PowerSwitchLabel = uilabel(app.BER_Vs_SNR_plot);
+            app.PowerSwitchLabel.HorizontalAlignment = 'center';
+            app.PowerSwitchLabel.Position = [26 3 39 22];
+            app.PowerSwitchLabel.Text = 'Power';
+
+            % Create PowerSwitch
+            app.PowerSwitch = uiswitch(app.BER_Vs_SNR_plot, 'toggle');
+            app.PowerSwitch.ValueChangedFcn = createCallbackFcn(app, @PowerSwitchValueChanged, true);
+            app.PowerSwitch.Position = [35 45 20 45];
+
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.BER_Vs_SNR_plot);
+            title(app.UIAxes, 'Title')
+            xlabel(app.UIAxes, 'X')
+            ylabel(app.UIAxes, 'Y')
+            app.UIAxes.YLim = [1e-05 1];
+            app.UIAxes.Position = [13 110 628 371];
+        end
+    end
+
+    methods (Access = public)
+
+        % Construct app
+        function app = BERgraph
+
+            % Create and configure components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.BER_Vs_SNR_plot)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.BER_Vs_SNR_plot)
+        end
+    end
+end
